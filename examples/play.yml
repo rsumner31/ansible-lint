@@ -1,6 +1,0 @@
----
-- hosts: bobbins
-
-  tasks:
-  - name: a bad play
-    action: command service blah restart

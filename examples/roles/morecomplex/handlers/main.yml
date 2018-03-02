@@ -1,2 +1,0 @@
-- name: restart service using command
-  command: service bar restart

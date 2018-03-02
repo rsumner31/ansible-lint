@@ -1,4 +1,0 @@
-- name: test include
-  action: funny value=clown
-  args: 
-    key: value

@@ -30,6 +30,8 @@ import codecs
 
 default_rulesdir = os.path.join(os.path.dirname(ansiblelint.utils.__file__), 'rules')
 
+__version__ = '1.0.0'
+
 
 class AnsibleLintRule(object):
 

@@ -1,0 +1,34 @@
+---
+- hosts: webservers
+
+  vars:
+    oldskool: "1.2.3"
+    bracket: "and close bracket"
+
+  tasks:
+  - name: bobbins
+    action: command echo ${oldskool}
+
+  - name: blah
+    action: debug oops a missing {{bracket}
+
+  - name: unset variable
+    action: command echo {{thisvariable}} is not set in this playbook
+
+  - name: trailing whitespace
+    action: do nothing   
+
+  - name: git check
+    action: git a=b c=d
+
+  - name: git check 2
+    action: git version=HEAD c=d
+
+  - name: git check 3
+    git: version=a1b2c3d4 repo=xyz bobbins=d
+
+  - name: executing git through command
+    action: command git clone blah
+
+  - name: using git module
+    action: git command

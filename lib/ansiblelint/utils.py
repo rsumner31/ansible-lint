@@ -90,6 +90,7 @@ def load_plugins(directory):
 
 
 def tokenize(line):
+    result = list()
     tokens = line.lstrip().split(" ")
     if tokens[0] == '-':
         tokens = tokens[1:]

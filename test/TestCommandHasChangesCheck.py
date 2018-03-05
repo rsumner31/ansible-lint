@@ -6,7 +6,7 @@ from ansiblelint.rules.CommandHasChangesCheckRule import CommandHasChangesCheckR
 class TestCommandHasChangesCheck(unittest.TestCase):
     collection = RulesCollection()
 
-    def test_file_positive(self):
+    def test_command_changes_positive(self):
         self.collection.register(CommandHasChangesCheckRule())
 
     def test_command_changes_positive(self):
@@ -14,7 +14,7 @@ class TestCommandHasChangesCheck(unittest.TestCase):
         good_runner = ansiblelint.Runner(self.collection, [success], [], [], [])
         self.assertEqual([], good_runner.run())
 
-    def test_file_negative(self):
+    def test_command_changes_negative(self):
         self.collection.register(CommandHasChangesCheckRule())
         failure = 'test/command-check-failure.yml'
         bad_runner = ansiblelint.Runner(self.collection, [failure], [], [], [])

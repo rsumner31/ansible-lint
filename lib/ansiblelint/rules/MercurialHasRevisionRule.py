@@ -18,27 +18,17 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-import unittest
-
 import ansiblelint.utils
 from ansiblelint import AnsibleLintRule
-from rules import EMatcherRule, UnsetVariableMatcherRule
 
 
-class TestRule(unittest.TestCase):
+class MercurialHasRevisionRule(AnsibleLintRule):
+    id = 'ANSIBLE0005'
+    shortdesc = 'Mercurial checkouts must contain explicit revision'
+    description = 'All version control checkouts must point to ' + \
+                  'an explicit commit or tag, not just "latest"'
 
-    def test_rule_matching(self):
-        text = ""
-        with open('test/ematchtest.txt') as f:
-            text = f.read()
-        ematcher = EMatcherRule.EMatcherRule()
-        linenos = ematcher.prematch(text)
-        self.assertEqual(linenos, [1,3,5])
+    tags = ['repeatability']
 
-    def test_rule_postmatching(self):
-        text = ""
-        with open('test/bracketsmatchtest.txt') as f:
-            text = f.read()
-        rule = UnsetVariableMatcherRule.UnsetVariableMatcherRule()
-        linenos = rule.postmatch(text)
-        self.assertEqual(linenos, [1,3])
+    def matchtask(self, file, task):
+        return task['action']['module'] == 'hg' and task['action'].get('revision', 'default') == 'default'

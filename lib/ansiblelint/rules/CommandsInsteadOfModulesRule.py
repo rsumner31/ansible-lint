@@ -35,6 +35,7 @@ except ImportError:
 
 
 
+
 class CommandsInsteadOfModulesRule(AnsibleLintRule):
     id = 'ANSIBLE0006'
     shortdesc = 'Using command rather than module'

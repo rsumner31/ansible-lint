@@ -35,6 +35,7 @@ except ImportError:
 
 
 
+
 class CommandsInsteadOfArgumentsRule(AnsibleLintRule):
     id = 'ANSIBLE0007'
     shortdesc = 'Using command rather than an argument to e.g. file'

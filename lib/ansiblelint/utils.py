@@ -57,6 +57,10 @@ except ImportError:
         dl.set_basedir(basedir)
         templar = Templar(dl, variables=templatevars)
         return templar.template(varname, **kwargs)
+    try:
+        from ansible.plugins import module_loader
+    except ImportError:
+        from ansible.plugins.loader import module_loader
 
 LINE_NUMBER_KEY = '__line__'
 

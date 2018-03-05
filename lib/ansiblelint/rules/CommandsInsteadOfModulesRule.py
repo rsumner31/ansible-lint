@@ -34,6 +34,7 @@ except ImportError:
             boolean = constants.mk_boolean
 
 
+
 class CommandsInsteadOfModulesRule(AnsibleLintRule):
     id = 'ANSIBLE0006'
     shortdesc = 'Using command rather than module'

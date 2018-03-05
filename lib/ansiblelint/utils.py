@@ -463,7 +463,6 @@ def parse_yaml_linenumbers(data):
 
     The line numbers are stored in each node's LINE_NUMBER_KEY key.
     """
-    loader = yaml.Loader(data)
 
     def compose_node(parent, index):
         # the line number where the previous token has ended (plus empty lines)
@@ -477,7 +476,11 @@ def parse_yaml_linenumbers(data):
         mapping[LINE_NUMBER_KEY] = node.__line__
         return mapping
 
-    loader.compose_node = compose_node
-    loader.construct_mapping = construct_mapping
-    data = loader.get_single_data()
+    try:
+        loader = yaml.Loader(data)
+        loader.compose_node = compose_node
+        loader.construct_mapping = construct_mapping
+        data = loader.get_single_data()
+    except (yaml.parser.ParserError, yaml.scanner.ScannerError) as e:
+        raise SystemExit("Failed to parse YAML %s: %s" % (data, str(e)))
     return data

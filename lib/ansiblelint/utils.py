@@ -458,7 +458,7 @@ def get_action_tasks(yaml, file):
             if 'include' not in task.keys()]
 
 
-def parse_yaml_linenumbers(data):
+def parse_yaml_linenumbers(data, filename):
     """Parses yaml as ansible.utils.parse_yaml but with linenumbers.
 
     The line numbers are stored in each node's LINE_NUMBER_KEY key.
@@ -482,5 +482,5 @@ def parse_yaml_linenumbers(data):
         loader.construct_mapping = construct_mapping
         data = loader.get_single_data()
     except (yaml.parser.ParserError, yaml.scanner.ScannerError) as e:
-        raise SystemExit("Failed to parse YAML %s: %s" % (data, str(e)))
+        raise SystemExit("Failed to parse YAML in %s: %s\n%s" % (filename, str(e), data))
     return data

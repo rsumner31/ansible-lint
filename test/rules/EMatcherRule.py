@@ -1,5 +1,5 @@
-import ansiblelint.utils
 from ansiblelint import AnsibleLintRule
+
 
 class EMatcherRule(AnsibleLintRule):
     id = 'TEST0001'

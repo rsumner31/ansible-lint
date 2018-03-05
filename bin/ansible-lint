@@ -40,7 +40,7 @@ def main(args):
 
     rules = RulesCollection.create_from_directory(options.rulesdir)
     if options.listrules:
-        print rules
+        print(rules)
         return 0
 
     playbooks = set(args)
@@ -55,7 +55,7 @@ def main(args):
         matches.extend(rules.run(playbook, tags=set(options.tags), skip_tags=set(options.skip_tags)))
 
     for match in matches:
-        print formatter.format(match)
+        print(formatter.format(match))
 
 
 if __name__ == "__main__":

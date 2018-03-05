@@ -21,7 +21,6 @@
 import collections
 import unittest
 
-from ansiblelint import AnsibleLintRule
 from ansiblelint import RulesCollection
 
 

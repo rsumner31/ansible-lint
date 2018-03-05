@@ -1,5 +1,5 @@
-import ansiblelint.utils
 from ansiblelint import AnsibleLintRule
+
 
 class UnsetVariableMatcherRule(AnsibleLintRule):
     id = 'TEST0002'

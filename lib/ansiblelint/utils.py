@@ -25,6 +25,9 @@ import os
 import ansible.constants as C
 from ansible.errors import AnsibleError
 from ansible.module_utils.splitter import split_args
+from ansible.playbook.task import Task
+import ansible.utils
+
 import yaml
 from yaml.composer import Composer
 from yaml.constructor import Constructor
@@ -105,7 +108,6 @@ def load_plugins(directory):
 
 
 def tokenize(line):
-    result = list()
     tokens = line.lstrip().split(" ")
     if tokens[0] == '-':
         tokens = tokens[1:]

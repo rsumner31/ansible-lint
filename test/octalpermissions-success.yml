@@ -1,0 +1,29 @@
+---
+- hosts: hosts
+  vars:
+    varset: varset
+  tasks:
+    - name: octal permissions test success (0600)
+      file:
+        path: foo
+        mode: 0600
+
+    - name: octal permissions test success (0000)
+      file:
+        path: foo
+        mode: 0000
+
+    - name: octal permissions test success (0123)
+      file:
+        path: foo
+        mode: 0123
+
+    - name: octal permissions test success (04000)
+      file:
+        path: baz
+        mode: 04000
+
+    - name: octal permissions test success (02000)
+      file:
+        path: bar
+        mode: 02000

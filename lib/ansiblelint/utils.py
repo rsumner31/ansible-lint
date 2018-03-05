@@ -385,6 +385,7 @@ def task_to_str(task):
     return "{0} {1}".format(action["__ansible_module__"], args)
 
 
+
 def extract_from_list(blocks, candidates):
     results = list()
     for block in blocks:

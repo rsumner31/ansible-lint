@@ -1,10 +1,13 @@
 import os
 import unittest
+import ansible
 
 from ansiblelint import Runner, RulesCollection
+from pkg_resources import parse_version
 
 
 class TestTaskIncludes(unittest.TestCase):
+
     def setUp(self):
         rulesdir = os.path.join('lib', 'ansiblelint', 'rules')
         self.rules = RulesCollection.create_from_directory(rulesdir)

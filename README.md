@@ -129,6 +129,10 @@ examples/example.yml:31
 examples/example.yml:19
     action: do nothing
 
+[ANSIBLE0003] Mismatched { and }
+examples/example.yml:13
+    action: debug oops a missing {{bracket}
+
 [ANSIBLE0004] Checkouts must contain explicit version
 examples/example.yml:22
     action: git a=b c=d

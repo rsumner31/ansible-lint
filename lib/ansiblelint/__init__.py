@@ -101,6 +101,20 @@ class AnsibleLintRule(object):
                                              section, file['path'], self, message))
         return matches
 
+    def matchlines(self, filename, text):
+        matches = []
+        # arrays are 0-based, line numbers are 1-based
+        # so use prev_line_no as the counter
+        for (prev_line_no, line) in enumerate(text.split("\n")):
+            result = self.match(line)
+            if result:
+                message = None
+                if isinstance(result, str):
+                    message = result
+                matches.append(Match(prev_line_no+1, line, filename, self, message))
+        return matches
+
+
 
 class RulesCollection(object):
 

@@ -16,7 +16,7 @@
     action: command echo {{thisvariable}} is not set in this playbook
 
   - name: trailing whitespace
-    action: do nothing   
+    action: command echo do nothing   
 
   - name: git check
     action: git a=b c=d

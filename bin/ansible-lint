@@ -1,0 +1,68 @@
+#!/usr/bin/env python
+
+import ansible.constants as C
+import ansiblelint.utils as utils
+import ansiblelint.formatters as formatters
+from ansiblelint import RulesCollection
+import os
+import sys
+import optparse
+
+VERSION = "0.1.0"
+
+def main(args):
+
+    formatter = formatters.Formatter()
+
+    parser = optparse.OptionParser("%prog playbook.yml", 
+                                   version="%prog " + VERSION)
+
+    parser.add_option('-L', dest='listrules', default=False, 
+                      action='store_true', help="list all the rules") 
+    parser.add_option('-q', dest='quiet', default=False, action='store_true',
+                      help="quieter, although not silent output") 
+    parser.add_option('-r', dest="rulesdir", 
+                      default = os.path.join(os.path.dirname(__file__), 
+                                             '..', 'rules'),
+                      help="location of rules directory")
+    parser.add_option('-t', dest='tags', default = [],
+                      help="only check rules tagged with these values")
+    parser.add_option('-T', dest='listtags', action='store_true',
+                      help="list all the tags")
+    parser.add_option('-x', dest='skip_tags', default = [],
+                      help="only check rules whose tags do not match these values")
+    options, args = parser.parse_args(args)
+
+    if options.quiet:
+        formatter = formatters.QuietFormatter()
+
+    if len(args) == 0 and not (options.listrules or options.listtags):
+        parser.print_help(file=sys.stderr)
+        return 1
+
+    rules = RulesCollection.create_from_directory(options.rulesdir)
+    if options.listrules:
+        print rules
+        return 0
+
+    if options.listtags:
+        print rules.listtags()
+        return 0
+
+    playbooks = set(args)
+    visited = set()
+    while (visited != playbooks):
+        for arg in playbooks - visited:
+            playbooks |= set(utils.find_children(arg))
+            visited.add(arg)
+
+    matches = list()
+    for playbook in playbooks: 
+        matches.extend(rules.run(playbook, tags=set(options.tags), skip_tags=set(options.skip_tags)))
+
+    for match in matches:
+        print formatter.format(match)
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

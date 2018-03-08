@@ -6,11 +6,17 @@
     bracket: "and close bracket"
 
   tasks:
+  - name: bobbins
+    action: command echo ${oldskool}
+
+  - name: blah
+    action: debug oops a missing {{bracket}
+
   - name: unset variable
     action: command echo {{thisvariable}} is not set in this playbook
 
   - name: trailing whitespace
-    action: command echo do nothing   
+    action: do nothing   
 
   - name: git check
     action: git a=b c=d
@@ -28,22 +34,4 @@
     action: command chdir=bobbins creates=whatever /usr/bin/git clone blah
 
   - name: using git module
-    action: git repo=blah
-
-  - name: passing git as an argument to another task
-    action: debug msg="{{item}}"
-    with_items: 
-      - git
-      - bobbins
-
-  - name: yum latest
-    yum: state=latest name=httpd
-
-  - debug: msg="task without a name"
-
-  - name: apt latest
-    apt: state=latest name=apache2
-
-  - name: always run
-    debug: msg="always_run is deprecated"
-    always_run: true
+    action: git command

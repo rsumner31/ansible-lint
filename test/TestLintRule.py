@@ -1,45 +1,26 @@
-# Copyright (c) 2013-2014 Will Thames <will@thames.id.au>
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-# THE SOFTWARE.
-
 import unittest
 
-from .rules import EMatcherRule
-from .rules import UnsetVariableMatcherRule
+import ansiblelint.utils
+from ansiblelint import AnsibleLintRule
+from rules import EMatcherRule, UnsetVariableMatcherRule
 
 
 class TestRule(unittest.TestCase):
 
     def test_rule_matching(self):
         text = ""
-        filename = 'test/ematchtest.yml'
+        filename = 'test/ematchtest.txt'
         with open(filename) as f:
             text = f.read()
         ematcher = EMatcherRule.EMatcherRule()
-        matches = ematcher.matchlines(dict(path=filename, type='playbooks'), text)
+        matches = ematcher.matchlines(filename, text)
         self.assertEqual(len(matches), 3)
 
     def test_rule_postmatching(self):
         text = ""
-        filename = 'test/bracketsmatchtest.yml'
+        filename = 'test/bracketsmatchtest.txt'
         with open(filename) as f:
             text = f.read()
         rule = UnsetVariableMatcherRule.UnsetVariableMatcherRule()
-        matches = rule.matchlines(dict(path=filename, type='playbooks'), text)
+        matches = rule.matchlines(filename, text)
         self.assertEqual(len(matches), 2)

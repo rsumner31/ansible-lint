@@ -2,5 +2,8 @@
 - hosts: bobbins
 
   tasks:
-  - name: a bad play
-    action: command service blah restart
+  - name: lets mismatch some braces
+    action: oops {{the} bracketing is {{wrong}}
+
+  - name: this won't be picked up though
+    action: this isn't {{actually} right {but}} oh well.

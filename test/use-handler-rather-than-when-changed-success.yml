@@ -12,3 +12,15 @@
     debug:
       msg: why isn't this a handler
     when: result.stdout == "hello"
+
+  - name: never actually debug
+    debug:
+      var: result
+    when: False
+
+  - name: check when with a list
+    debug:
+      var: result
+    when:
+    - conditionA
+    - conditionB

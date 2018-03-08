@@ -3,7 +3,6 @@ from ansiblelint import Runner, RulesCollection
 from ansiblelint.rules.OctalPermissionsRule import OctalPermissionsRule
 
 
-
 class TestOctalPermissionsRuleWithFile(unittest.TestCase):
     collection = RulesCollection()
 

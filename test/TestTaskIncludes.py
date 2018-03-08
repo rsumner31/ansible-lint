@@ -1,13 +1,10 @@
 import os
 import unittest
-import ansible
 
 from ansiblelint import Runner, RulesCollection
-from pkg_resources import parse_version
 
 
 class TestTaskIncludes(unittest.TestCase):
-
     def setUp(self):
         rulesdir = os.path.join('lib', 'ansiblelint', 'rules')
         self.rules = RulesCollection.create_from_directory(rulesdir)
@@ -29,3 +26,9 @@ class TestTaskIncludes(unittest.TestCase):
         runner = Runner(self.rules, filename, [], [], [])
         runner.run()
         self.assertEqual(len(runner.playbooks), 4)
+
+    def test_include_tasks_with_block_include(self):
+        filename = 'test/include-in-block.yml'
+        runner = Runner(self.rules, filename, [], [], [])
+        runner.run()
+        self.assertEqual(len(runner.playbooks), 3)

@@ -30,8 +30,6 @@ import codecs
 
 default_rulesdir = os.path.join(os.path.dirname(ansiblelint.utils.__file__), 'rules')
 
-__version__ = '1.0.0'
-
 
 class AnsibleLintRule(object):
 
@@ -81,7 +79,7 @@ class AnsibleLintRule(object):
 
     def matchyaml(self, file, text):
         matches = []
-        if not self.matchplay or file['type'] != 'playbook':
+        if not self.matchplay:
             return matches
         yaml = ansiblelint.utils.parse_yaml_linenumbers(text, file['path'])
         if yaml and hasattr(self, 'matchplay'):
@@ -100,20 +98,6 @@ class AnsibleLintRule(object):
                         matches.append(Match(play[ansiblelint.utils.LINE_NUMBER_KEY],
                                              section, file['path'], self, message))
         return matches
-
-    def matchlines(self, filename, text):
-        matches = []
-        # arrays are 0-based, line numbers are 1-based
-        # so use prev_line_no as the counter
-        for (prev_line_no, line) in enumerate(text.split("\n")):
-            result = self.match(line)
-            if result:
-                message = None
-                if isinstance(result, str):
-                    message = result
-                matches.append(Match(prev_line_no+1, line, filename, self, message))
-        return matches
-
 
 
 class RulesCollection(object):
@@ -196,7 +180,7 @@ class Match(object):
 class Runner(object):
 
     def __init__(self, rules, playbook, tags, skip_list, exclude_paths,
-                 verbosity=0, checked_files=None):
+                 verbosity=0):
         self.rules = rules
         self.playbooks = set()
         # assume role if directory
@@ -210,9 +194,6 @@ class Runner(object):
         self.skip_list = skip_list
         self._update_exclude_paths(exclude_paths)
         self.verbosity = verbosity
-        if checked_files is None:
-            checked_files = set()
-        self.checked_files = checked_files
 
     def _update_exclude_paths(self, exclude_paths):
         if exclude_paths:
@@ -250,14 +231,10 @@ class Runner(object):
                 visited.add(arg)
 
         matches = list()
-        # remove files that have already been checked
-        files = [x for x in files if x['path'] not in self.checked_files]
         for file in files:
             if self.verbosity > 0:
                 print("Examining %s of type %s" % (file['path'], file['type']))
             matches.extend(self.rules.run(file, tags=set(self.tags),
                            skip_list=set(self.skip_list)))
-        # update list of checked files
-        self.checked_files.update([x['path'] for x in files])
 
         return matches

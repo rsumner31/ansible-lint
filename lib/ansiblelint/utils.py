@@ -22,11 +22,18 @@ import glob
 import imp
 import os
 
-import ansible.constants as C
+import six
+
+from ansible import constants
 from ansible.errors import AnsibleError
-from ansible.module_utils.splitter import split_args
-from ansible.playbook.task import Task
-import ansible.utils
+
+try:
+    # Try to import the Ansible 2 module first, it's the future-proof one
+    from ansible.parsing.splitter import split_args
+
+except ImportError:
+    # Fallback on the Ansible 1.9 module
+    from ansible.module_utils.splitter import split_args
 
 import yaml
 from yaml.composer import Composer
@@ -44,6 +51,7 @@ except ImportError:
     from ansible.template import Templar
     from ansible.parsing.mod_args import ModuleArgsParser
     from ansible.plugins import module_loader
+    from ansible.errors import AnsibleParserError
     ANSIBLE_VERSION = 2
 
     def parse_yaml_from_file(filepath):
@@ -60,22 +68,18 @@ except ImportError:
         dl.set_basedir(basedir)
         templar = Templar(dl, variables=templatevars)
         return templar.template(varname, **kwargs)
-    try:
-        from ansible.plugins import module_loader
-    except ImportError:
-        from ansible.plugins.loader import module_loader
 
 LINE_NUMBER_KEY = '__line__'
+FILENAME_KEY = '__file__'
 
 VALID_KEYS = [
     'name', 'action', 'when', 'async', 'poll', 'notify',
-    'first_available_file', 'include', 'include_tasks', 'import_playbook',
-    'import_tasks', 'tags', 'register', 'ignore_errors', 'delegate_to',
-    'local_action', 'transport', 'remote_user', 'sudo',
-    'sudo_user', 'sudo_pass', 'when', 'connection', 'environment', 'args', 'always_run',
+    'first_available_file', 'include', 'tags', 'register', 'ignore_errors',
+    'delegate_to', 'local_action', 'transport', 'remote_user', 'sudo', 'sudo_user',
+    'sudo_pass', 'when', 'connection', 'environment', 'args', 'always_run',
     'any_errors_fatal', 'changed_when', 'failed_when', 'check_mode', 'delay', 'retries', 'until',
     'su', 'su_user', 'su_pass', 'no_log', 'run_once',
-    'become', 'become_user', 'become_method',
+    'become', 'become_user', 'become_method', FILENAME_KEY,
 ]
 
 BLOCK_NAME_TO_ACTION_TYPE_MAP = {
@@ -145,7 +149,7 @@ def find_children(playbook, playbook_dir):
     else:
         try:
             playbook_ds = parse_yaml_from_file(playbook[0])
-        except AnsibleError, e:
+        except AnsibleError as e:
             raise SystemExit(str(e))
     results = []
     basedir = os.path.dirname(playbook[0])
@@ -186,14 +190,14 @@ def play_children(basedir, item, parent_type, playbook_dir):
         'post_tasks': _taskshandlers_children,
         'block': _taskshandlers_children,
         'include': _include_children,
-        'include_tasks': _include_children,
-        'import_playbook': _include_children,
-        'import_tasks': _include_children,
         'roles': _roles_children,
         'dependencies': _roles_children,
         'handlers': _taskshandlers_children,
     }
     (k, v) = item
+    play_library = os.path.join(os.path.abspath(basedir), 'library')
+    _load_library_if_exists(play_library)
+
     if k in delegate_map:
         if v:
             v = template(os.path.abspath(basedir),
@@ -218,44 +222,46 @@ def _taskshandlers_children(basedir, k, v, parent_type):
     results = []
     for th in v:
         if 'include' in th:
-            append_children(th['include'], basedir, k, parent_type, results)
-        elif 'include_tasks' in th:
-            append_children(th['include_tasks'], basedir, k, parent_type, results)
-        elif 'import_playbook' in th:
-            append_children(th['import_playbook'], basedir, k, parent_type, results)
-        elif 'import_tasks' in th:
-            append_children(th['import_tasks'], basedir, k, parent_type, results)
+            # when taskshandlers_children is called for playbooks, the
+            # actual type of the included tasks is the section containing the
+            # include, e.g. tasks, pre_tasks, or handlers.
+            if parent_type == 'playbook':
+                playbook_section = k
+            else:
+                playbook_section = parent_type
+            results.append({
+                'path': path_dwim(basedir, th['include']),
+                'type': playbook_section
+            })
         elif 'block' in th:
             results.extend(_taskshandlers_children(basedir, k, th['block'], parent_type))
+            if 'rescue' in th:
+                results.extend(_taskshandlers_children(basedir, k, th['rescue'], parent_type))
+            if 'always' in th:
+                results.extend(_taskshandlers_children(basedir, k, th['always'], parent_type))
+
     return results
-
-
-def append_children(taskhandler, basedir, k, parent_type, results):
-    # when taskshandlers_children is called for playbooks, the
-    # actual type of the included tasks is the section containing the
-    # include, e.g. tasks, pre_tasks, or handlers.
-    if parent_type == 'playbook':
-        playbook_section = k
-    else:
-        playbook_section = parent_type
-    results.append({
-        'path': path_dwim(basedir, taskhandler),
-        'type': playbook_section
-    })
 
 
 def _roles_children(basedir, k, v, parent_type):
     results = []
     for role in v:
         if isinstance(role, dict):
-            if 'role' in role:
+            if 'role' in role or 'name' in role:
                 if 'tags' not in role or 'skip_ansible_lint' not in role['tags']:
-                    results.extend(_look_for_role_files(basedir, role['role']))
+                    results.extend(_look_for_role_files(basedir,
+                                                        role.get('role', role.get('name'))))
             else:
-                raise SystemExit('role dict {0} does not contain a "role" key'.format(role))
+                raise SystemExit('role dict {0} does not contain a "role" '
+                                 'or "name" key'.format(role))
         else:
             results.extend(_look_for_role_files(basedir, role))
     return results
+
+
+def _load_library_if_exists(path):
+    if os.path.exists(path):
+        module_loader.add_directory(path)
 
 
 def _rolepath(basedir, role):
@@ -272,9 +278,9 @@ def _rolepath(basedir, role):
         path_dwim(basedir, os.path.join('..', '..', role))
     ]
 
-    if C.DEFAULT_ROLES_PATH:
-        search_locations = C.DEFAULT_ROLES_PATH
-        if isinstance(search_locations, basestring):
+    if constants.DEFAULT_ROLES_PATH:
+        search_locations = constants.DEFAULT_ROLES_PATH
+        if isinstance(search_locations, six.string_types):
             search_locations = search_locations.split(os.pathsep)
         for loc in search_locations:
             loc = os.path.expanduser(loc)
@@ -286,9 +292,7 @@ def _rolepath(basedir, role):
             break
 
     if role_path:
-        role_modules = os.path.join(role_path, 'library')
-        if os.path.exists(role_modules):
-            module_loader.add_directory(role_modules)
+        _load_library_if_exists(os.path.join(role_path, 'library'))
 
     return role_path
 
@@ -328,7 +332,22 @@ def normalize_task_v2(task):
 
     result = dict()
     mod_arg_parser = ModuleArgsParser(task)
-    action, arguments, result['delegate_to'] = mod_arg_parser.parse()
+    try:
+        action, arguments, result['delegate_to'] = mod_arg_parser.parse()
+    except AnsibleParserError as e:
+        try:
+            task_info = "%s:%s" % (task[FILENAME_KEY], task[LINE_NUMBER_KEY])
+            del task[FILENAME_KEY]
+            del task[LINE_NUMBER_KEY]
+        except KeyError:
+            task_info = "Unknown"
+        try:
+            import pprint
+            pp = pprint.PrettyPrinter(indent=2)
+            task_pprint = pp.pformat(task)
+        except ImportError:
+            task_pprint = task
+        raise SystemExit("Couldn't parse task at %s (%s)\n%s" % (task_info, e.message, task_pprint))
 
     # denormalize shell -> command conversion
     if '_uses_shell' in arguments:
@@ -366,7 +385,7 @@ def normalize_task_v1(task):
             else:
                 result[k] = v
         else:
-            if isinstance(v, basestring):
+            if isinstance(v, six.string_types):
                 v = _kv_to_dict(k + ' ' + v)
             elif not v:
                 v = dict(__ansible_module__=k)
@@ -402,11 +421,17 @@ def normalize_task_v1(task):
     return result
 
 
-def normalize_task(task):
+def normalize_task(task, filename):
+    ansible_action_type = task.get('__ansible_action_type__', 'task')
+    if '__ansible_action_type__' in task:
+        del(task['__ansible_action_type__'])
     if ANSIBLE_VERSION < 2:
-        return normalize_task_v1(task)
+        task = normalize_task_v1(task)
     else:
-        return normalize_task_v2(task)
+        task = normalize_task_v2(task)
+    task[FILENAME_KEY] = filename
+    task['__ansible_action_type__'] = ansible_action_type
+    return task
 
 
 def task_to_str(task):
@@ -414,18 +439,17 @@ def task_to_str(task):
     if name:
         return name
     action = task.get("action")
-    args = " ".join([u"{0}={1}".format(k, v) for (k, v) in action.items()
+    args = " " .join([u"{0}={1}".format(k, v) for (k, v) in action.items()
                      if k not in ["__ansible_module__", "__ansible_arguments__"]] +
-                    action.get("__ansible_arguments__"))
+                     action.get("__ansible_arguments__"))
     return u"{0} {1}".format(action["__ansible_module__"], args)
-
 
 
 def extract_from_list(blocks, candidates):
     results = list()
     for block in blocks:
         for candidate in candidates:
-            if candidate in block:
+            if isinstance(block, dict) and candidate in block:
                 if isinstance(block[candidate], list):
                     results.extend(add_action_type(block[candidate], candidate))
                 elif block[candidate] is not None:
@@ -456,8 +480,22 @@ def get_action_tasks(yaml, file):
     block_rescue_always = ('block', 'rescue', 'always')
     tasks[:] = [task for task in tasks if all(k not in task for k in block_rescue_always)]
 
-    return [normalize_task(task) for task in tasks
-            if 'include' not in task.keys()]
+    return [task for task in tasks if 'include' not in task.keys()]
+
+
+def get_normalized_tasks(yaml, file):
+    tasks = get_action_tasks(yaml, file)
+    res = []
+    for task in tasks:
+        # An empty `tags` block causes `None` to be returned if
+        # the `or []` is not present - `task.get('tags', [])`
+        # does not suffice.
+        if 'skip_ansible_lint' in (task.get('tags') or []):
+            # No need to normalize_task is we are skipping it.
+            continue
+        res.append(normalize_task(task, file['path']))
+
+    return res
 
 
 def parse_yaml_linenumbers(data, filename):
@@ -476,6 +514,7 @@ def parse_yaml_linenumbers(data, filename):
     def construct_mapping(node, deep=False):
         mapping = Constructor.construct_mapping(loader, node, deep=deep)
         mapping[LINE_NUMBER_KEY] = node.__line__
+        mapping[FILENAME_KEY] = filename
         return mapping
 
     try:
@@ -484,5 +523,5 @@ def parse_yaml_linenumbers(data, filename):
         loader.construct_mapping = construct_mapping
         data = loader.get_single_data()
     except (yaml.parser.ParserError, yaml.scanner.ScannerError) as e:
-        raise SystemExit("Failed to parse YAML in %s: %s\n%s" % (filename, str(e), data))
+        raise SystemExit("Failed to parse YAML in %s: %s" % (filename, str(e)))
     return data

@@ -4,18 +4,22 @@ Ansible-lint
 ansible-lint checks playbooks for practices and behaviour that could
 potentially be improved
 
+[![PyPI version](https://img.shields.io/pypi/v/ansible-lint.svg)](https://pypi.python.org/pypi/ansible-lint)
+[![Build Status](https://travis-ci.org/willthames/ansible-lint.svg?branch=master)](https://travis-ci.org/willthames/ansible-lint)
+
 Setup
 -----
 
 Using pip:
 ```
-pip install ansible-lint
+pip2 install ansible-lint
 ```
 
 From source:
 ```
 git clone https://github.com/willthames/ansible-lint
 export PYTHONPATH=$PYTHONPATH:`pwd`/ansible-lint/lib
+export PATH=$PATH:`pwd`/ansible-lint/bin
 ```
 
 Usage
@@ -45,6 +49,41 @@ Options:
   --exclude=EXCLUDE_PATHS
                         path to directories or files to skip. This option is
                         repeatable.
+  --force-color         Try force colored output (relying on ansible's code)
+  --nocolor             disable colored output
+```
+
+False positives
+===============
+
+Some rules are a bit of a rule of thumb. Advanced git, yum or apt usage,
+for example, is typically difficult to achieve through the modules. In
+this case, you should mark the task so that warnings aren't produced.
+
+There are two mechanisms for this - one works with all tasks, the other
+works with the command checking modules.
+
+Use the `warn` parameter with the command or shell module.
+
+Use `skip_ansible_lint` tag with any task that you want to skip.
+
+I recommend commenting the reasons why you're skipping the check.
+Unfortunately ansible-lint is unable to check for such comments
+at this time! (patches welcome)
+
+```
+- name: this would typically fire CommandsInsteadOfArgumentRule
+  command: warn=no chmod 644 X
+
+- name: this would typically fire CommandsInsteadOfModuleRule
+  command: git pull --rebase
+  args:
+    warn: False
+
+- name: this would typically fire GitHasVersionRule
+  git: src=/path/to/git/repo dest=checkout 
+  tags:
+  - skip_ansible_lint
 ```
 
 Rules
@@ -66,6 +105,12 @@ Each rule definition should have the following:
   * `matchblock` that takes the details about the file and a block.
   It returns `None` or `False` if the line doesn't match the test
   and `True` or a custom message.
+  * `matchtask` operates on a single task or handler. Such a task
+      get standardized to always contain a `module` key and
+      `module_arguments` key. Other common task modifiers such as
+      `when`, `with_items` etc. are also available as keys if present
+      in the task.
+
 
 An example rule using `match` is:
 
@@ -117,6 +162,11 @@ as key-value pairs and a list of other arguments (e.g. the command used with `sh
 
 In ansible-lint 2.0.0, `task['action']['args']` was renamed `task['action']['module_arguments']`
 to avoid a clash when a module actually takes `args` as a parameter key (e.g. `ec2_tag`)
+
+In ansible-lint 3.0.0 `task['action']['module']` was renamed
+`task['action']['__ansible_module__']` to avoid a clash when a module take
+`module` as an argument. As a precaution, `task['action']['module_arguments']`
+was renamed `task['action']['__ansible_arguments__']`
 Examples
 --------
 
@@ -141,13 +191,9 @@ Task/Handler: using git module
 examples/example.yml:13
     action: do nothing   
 
-[ANSIBLE0003] Mismatched { and }
-examples/example.yml:13
-    action: debug oops a missing {{bracket}
-
-[ANSIBLE0004] Checkouts must contain explicit version
-examples/example.yml:22
-    action: git a=b c=d
+[ANSIBLE0002] Trailing whitespace
+examples/example.yml:35
+    with_items: 
 
 [ANSIBLE0006] git used in place of git module
 examples/example.yml:24
@@ -175,6 +221,22 @@ action: git a=b c=d
 As of version 2.4.0, ansible-lint now works just on roles (this is useful 
 for CI of roles)
 
+
+Pre-commit
+==========
+
+To use ansible-lint with [pre-commit](http://pre-commit.com/), just 
+add the following to your local repo's `.pre-commit-config.yaml` file. 
+Make sure to change `sha:` to be either a git commit sha or tag of 
+ansible-lint containing `hooks.yaml`.
+
+```yaml
+- repo: https://github.com/willthames/ansible-lint.git
+  sha: v3.3.1
+  hooks:
+    - id: ansible-lint
+      files: \.(yaml|yml)$
+```
 
 
 Contributing

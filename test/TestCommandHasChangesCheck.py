@@ -11,11 +11,11 @@ class TestCommandHasChangesCheck(unittest.TestCase):
 
     def test_command_changes_positive(self):
         success = 'test/command-check-success.yml'
-        good_runner = ansiblelint.Runner(self.collection, [success], [], [], [])
+        good_runner = Runner(self.collection, success, [], [], [])
         self.assertEqual([], good_runner.run())
 
     def test_command_changes_negative(self):
         failure = 'test/command-check-failure.yml'
-        bad_runner = ansiblelint.Runner(self.collection, [failure], [], [], [])
+        bad_runner = Runner(self.collection, failure, [], [], [])
         errs = bad_runner.run()
         self.assertEqual(2, len(errs))

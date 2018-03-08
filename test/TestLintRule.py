@@ -20,26 +20,26 @@
 
 import unittest
 
-from rules import EMatcherRule
-from rules import UnsetVariableMatcherRule
+from .rules import EMatcherRule
+from .rules import UnsetVariableMatcherRule
 
 
 class TestRule(unittest.TestCase):
 
     def test_rule_matching(self):
         text = ""
-        filename = 'test/ematchtest.txt'
+        filename = 'test/ematchtest.yml'
         with open(filename) as f:
             text = f.read()
         ematcher = EMatcherRule.EMatcherRule()
-        linenos = ematcher.prematch(text)
-        self.assertEqual(linenos, [1,3,5])
+        matches = ematcher.matchlines(dict(path=filename, type='playbooks'), text)
+        self.assertEqual(len(matches), 3)
 
     def test_rule_postmatching(self):
         text = ""
-        filename = 'test/bracketsmatchtest.txt'
+        filename = 'test/bracketsmatchtest.yml'
         with open(filename) as f:
             text = f.read()
         rule = UnsetVariableMatcherRule.UnsetVariableMatcherRule()
-        linenos = rule.postmatch(text)
-        self.assertEqual(linenos, [1,3])
+        matches = rule.matchlines(dict(path=filename, type='playbooks'), text)
+        self.assertEqual(len(matches), 2)

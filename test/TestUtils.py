@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 # Copyright (c) 2013-2014 Will Thames <will@thames.id.au>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -65,7 +67,7 @@ class TestUtils(unittest.TestCase):
     def test_normalize_simple_command(self):
         task1 = dict(name="hello", action="command chdir=abc echo hello world")
         task2 = dict(name="hello", command="chdir=abc echo hello world")
-        self.assertEqual(utils.normalize_task(task1), utils.normalize_task(task2))
+        self.assertEqual(utils.normalize_task(task1, 'tasks.yml'), utils.normalize_task(task2, 'tasks.yml'))
 
     def test_normalize_complex_command(self):
         task1 = dict(name="hello", action={'module': 'ec2',
@@ -75,9 +77,9 @@ class TestUtils(unittest.TestCase):
                                         'etc': 'whatever'})
         task3 = dict(name="hello", ec2="region=us-east1 etc=whatever")
         task4 = dict(name="hello", action="ec2 region=us-east1 etc=whatever")
-        self.assertEqual(utils.normalize_task(task1), utils.normalize_task(task2))
-        self.assertEqual(utils.normalize_task(task2), utils.normalize_task(task3))
-        self.assertEqual(utils.normalize_task(task3), utils.normalize_task(task4))
+        self.assertEqual(utils.normalize_task(task1, 'tasks.yml'), utils.normalize_task(task2, 'tasks.yml'))
+        self.assertEqual(utils.normalize_task(task2, 'tasks.yml'), utils.normalize_task(task3, 'tasks.yml'))
+        self.assertEqual(utils.normalize_task(task3, 'tasks.yml'), utils.normalize_task(task4, 'tasks.yml'))
 
     def test_normalize_args(self):
         task1 = dict(git={'version': 'abc'}, args={'repo': 'blah', 'dest': 'xyz'})
@@ -85,9 +87,9 @@ class TestUtils(unittest.TestCase):
 
         task3 = dict(git='version=abc repo=blah dest=xyz')
         task4 = dict(git=None, args={'repo': 'blah', 'dest': 'xyz', 'version': 'abc'})
-        self.assertEqual(utils.normalize_task(task1), utils.normalize_task(task2))
-        self.assertEqual(utils.normalize_task(task1), utils.normalize_task(task3))
-        self.assertEqual(utils.normalize_task(task1), utils.normalize_task(task4))
+        self.assertEqual(utils.normalize_task(task1, 'tasks.yml'), utils.normalize_task(task2, 'tasks.yml'))
+        self.assertEqual(utils.normalize_task(task1, 'tasks.yml'), utils.normalize_task(task3, 'tasks.yml'))
+        self.assertEqual(utils.normalize_task(task1, 'tasks.yml'), utils.normalize_task(task4, 'tasks.yml'))
 
     def test_extract_from_list(self):
         block = dict(
@@ -119,3 +121,8 @@ class TestUtils(unittest.TestCase):
         v = "{{ hello | to_json }}"
         result = utils.template('/a/b/c', v, dict(playbook_dir='/a/b/c'))
         self.assertEqual(result, "{{ hello | to_json }}")
+
+    def test_task_to_str_unicode(self):
+        task = dict(fail=dict(msg=u"unicode é ô à"))
+        result = utils.task_to_str(utils.normalize_task(task, 'filename.yml'))
+        self.assertEqual(result, u"fail msg=unicode é ô à")

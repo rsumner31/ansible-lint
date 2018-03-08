@@ -18,7 +18,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+import six
+
 from ansiblelint import AnsibleLintRule
+
+
+def _changed_in_when(item):
+    return any(changed in item for changed in
+               ['.changed', '|changed', '["changed"]', "['changed']"])
 
 
 class UseHandlerRatherThanWhenChangedRule(AnsibleLintRule):
@@ -29,6 +36,10 @@ class UseHandlerRatherThanWhenChangedRule(AnsibleLintRule):
     tags = ['behaviour']
 
     def matchtask(self, file, task):
-        if 'when' in task:
-            return any([changed in task['when'] for changed in
-                        ['.changed', '|changed', '["changed"]', "['changed']"]])
+        when = task.get('when')
+        if isinstance(when, list):
+            for item in when:
+                if _changed_in_when(item):
+                    return True
+        if isinstance(when, six.string_types):
+            return _changed_in_when(when)

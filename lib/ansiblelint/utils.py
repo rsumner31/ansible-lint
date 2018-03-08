@@ -76,8 +76,8 @@ VALID_KEYS = [
     'name', 'action', 'when', 'async', 'poll', 'notify',
     'first_available_file', 'include', 'tags', 'register', 'ignore_errors',
     'delegate_to', 'local_action', 'transport', 'remote_user', 'sudo', 'sudo_user',
-    'sudo_pass', 'when', 'connection', 'environment', 'args',
-    'any_errors_fatal', 'changed_when', 'failed_when', 'always_run', 'delay', 'retries', 'until',
+    'sudo_pass', 'when', 'connection', 'environment', 'args', 'always_run',
+    'any_errors_fatal', 'changed_when', 'failed_when', 'check_mode', 'delay', 'retries', 'until',
     'su', 'su_user', 'su_pass', 'no_log', 'run_once',
     'become', 'become_user', 'become_method', FILENAME_KEY,
 ]
@@ -222,9 +222,16 @@ def _taskshandlers_children(basedir, k, v, parent_type):
     results = []
     for th in v:
         if 'include' in th:
+            # when taskshandlers_children is called for playbooks, the
+            # actual type of the included tasks is the section containing the
+            # include, e.g. tasks, pre_tasks, or handlers.
+            if parent_type == 'playbook':
+                playbook_section = k
+            else:
+                playbook_section = parent_type
             results.append({
                 'path': path_dwim(basedir, th['include']),
-                'type': 'tasks'
+                'type': playbook_section
             })
         elif 'block' in th:
             results.extend(_taskshandlers_children(basedir, k, th['block'], parent_type))
@@ -432,10 +439,10 @@ def task_to_str(task):
     if name:
         return name
     action = task.get("action")
-    args = " " .join(["{0}={1}".format(k, v) for (k, v) in action.items()
+    args = " " .join([u"{0}={1}".format(k, v) for (k, v) in action.items()
                      if k not in ["__ansible_module__", "__ansible_arguments__"]] +
                      action.get("__ansible_arguments__"))
-    return "{0} {1}".format(action["__ansible_module__"], args)
+    return u"{0} {1}".format(action["__ansible_module__"], args)
 
 
 def extract_from_list(blocks, candidates):
@@ -478,7 +485,17 @@ def get_action_tasks(yaml, file):
 
 def get_normalized_tasks(yaml, file):
     tasks = get_action_tasks(yaml, file)
-    return [normalize_task(task, file['path']) for task in tasks]
+    res = []
+    for task in tasks:
+        # An empty `tags` block causes `None` to be returned if
+        # the `or []` is not present - `task.get('tags', [])`
+        # does not suffice.
+        if 'skip_ansible_lint' in (task.get('tags') or []):
+            # No need to normalize_task is we are skipping it.
+            continue
+        res.append(normalize_task(task, file['path']))
+
+    return res
 
 
 def parse_yaml_linenumbers(data, filename):
